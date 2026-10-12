@@ -12,18 +12,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Unzip and fix paths automatically
+    - name: Extract zip safely
       run: |
-        ZIP_FILE=$(ls *.zip 2>/dev/null | head -n 1)
-        if [ -n "$ZIP_FILE" ]; then
-          echo "Found zip: $ZIP_FILE"
-          unzip -o "$ZIP_FILE"
-        fi
-        # نقل الملفات تلقائياً إلى الجذر الرئيسي إذا كانت داخل مجلد فرعي
-        SUBDIR=$(find . -maxdepth 2 -name "gradlew" -exec dirname {} \;)
-        if [ "$SUBDIR" != "." ] && [ -n "$SUBDIR" ]; then
-          echo "Moving files from $SUBDIR to root"
-          cp -r $SUBDIR/* .
+        for f in *.zip; do
+          if [ -f "$f" ]; then
+            echo "Extracting: $f"
+            unzip -o "$f" || true
+          fi
+        done
+        # البحث عن مجلد المشروع ونقل محتواه للجذر إذا لزم الأمر
+        TARGET_DIR=$(find . -maxdepth 2 -name "gradlew" -exec dirname {} \; | head -n 1)
+        if [ "$TARGET_DIR" != "." ] && [ -n "$TARGET_DIR" ]; then
+          echo "Moving files from $TARGET_DIR to root"
+          cp -r $TARGET_DIR/* . || true
         fi
 
     - name: Set up JDK 17
@@ -33,7 +34,7 @@ jobs:
         java-version: '17'
 
     - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      run: chmod +x gradlew || true
 
     - name: Build Debug APK with Gradle
       run: ./gradlew assembleDebug
